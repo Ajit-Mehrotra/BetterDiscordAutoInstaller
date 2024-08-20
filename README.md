@@ -79,15 +79,15 @@ pip install -r requirements.txt
 python3 macos/manual-installer-mac.py
 ```
 > Reminder: You can update the manual-installer-mac.py code to give you more or less notifications. Feel free to update the local code according to your preferences.
-1. Update the directory and virtual enviornment name to whatever you used. This example cloned the repo to the "Projects" directory and named the virtual env "venv".
-2. Make sure it's saved and name it something memorable (ex. "Run BetterDiscord Script"). 
-3. Run manually to make sure it's working without errors. 
-4. Go to `Settings`
-5.  Search and click on `Keyboard Shortcuts`
-6.  On the left pane, click `Services`
-7.  Open the right pane, open the `General` dropdown. You should see the `.workflow` file you created in Automator.
-8.  Click `none` and type in whatever keyboard shortcut you want to use. Make sure it doesn't conflict with something else (ex. `cmd + shift + 0`)
-9.  Click `done`, click out, and test! 
+7. Update the directory and virtual enviornment name to whatever you used. This example cloned the repo to the "Projects" directory and named the virtual env "venv".
+8. Make sure it's saved and name it something memorable (ex. "Run BetterDiscord Script"). 
+9. Run manually to make sure it's working without errors. 
+10. Go to `Settings`
+11.  Search and click on `Keyboard Shortcuts`
+12.  On the left pane, click `Services`
+13.  Open the right pane, open the `General` dropdown. You should see the `.workflow` file you created in Automator.
+14.  Click `none` and type in whatever keyboard shortcut you want to use. Make sure it doesn't conflict with something else (ex. `cmd + shift + 0`)
+15.  Click `done`, click out, and test! 
 
 You're all set! 
 
@@ -113,16 +113,16 @@ pip install -r requirements.txt
 python3 macos/auto-installer-mac.py
 ```
 > Reminder: You can update the auto-installer-mac.py code to give you more or less notifications. Feel free to update the local code according to your preferences.
-1. Update the directory and virtual enviornment name to whatever you used. This example cloned the repo to the "Projects" directory and named the virtual env "venv".
-2. Make sure it's saved and name it something memorable (ex. "BetterDiscord AutoInstaller"). 
-3. Run manually to make sure it's working without errors. 
-4. Go to `Settings`
+7. Update the directory and virtual enviornment name to whatever you used. This example cloned the repo to the "Projects" directory and named the virtual env "venv".
+8. Make sure it's saved and name it something memorable (ex. "BetterDiscord AutoInstaller"). 
+9. Run manually to make sure it's working without errors. 
+10. Go to `Settings`
 
 > Note: this part is different for those who already did the manual installation
-10. Search and click on `Open at Login`
-11. Click the `+` button and navigate to `~/Library/Services` (you can press ctrl + shift + g and paste for easier naviation)
-12. You should see the `.workflow` file you created in Automator. 
-13. Select it and hit `done`! 
+11. Search and click on `Open at Login`
+12. Click the `+` button and navigate to `~/Library/Services` (you can press ctrl + shift + g and paste for easier naviation)
+13. You should see the `.workflow` file you created in Automator. 
+14. Select it and hit `done`! 
 
 You're all set! 
 
