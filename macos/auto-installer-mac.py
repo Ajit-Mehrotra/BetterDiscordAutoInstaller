@@ -7,6 +7,8 @@ import requests
 import json
 import time
 
+# TODO: Need to refactor
+# TODO: Need to add tests (no tests currently) -> Need to add missing error handling & edge cases
 
 # setup loggers
 logger = logging.getLogger(__name__)
@@ -25,19 +27,11 @@ DISCORD_EXECUTABLE_PATH = "/Applications/Discord.app"
 BD_ASAR_SAVE_PATH = os.path.join(BD_PARENT_PATH, "data/betterdiscord.asar")
 
 
-# load settings
-CURRENT_SETTINGS_VERSION = 2
-LAST_INSTALLED_DISCORD_VERSION = None
-
-
-def start_discord():
-    subprocess.Popen(["open", "-a", "Discord"])
+def notify(title, text):
+    os.system(f"""osascript -e 'display notification "{text}" with title "{title}"' """)
 
 
 def get_path_for_current_discord_version(DISCORD_PARENT_PATH: str) -> str:
-    # On MacOS, the discord version is set as a folder within Library/Application Support/discord --> ex. 0.0.315
-
-    # gets all versions of discord installed
     discord_path = [
         i for i in os.listdir(DISCORD_PARENT_PATH) if i.replace(".", "").isdigit()
     ]
@@ -53,13 +47,11 @@ def set_discord_index_js_path(discord_path: str) -> str:
 
 
 def patch_discord_index_js(discord_index_js_path: str, bd_asar_save_path: str) -> None:
-    # Open the index.js file
     logger.info("Attempting to patch Discord index file to use BetterDiscord...")
     with open(discord_index_js_path, "r+") as file:
         content = file.read()
         logger.info(f"Updating Discord index at: {discord_index_js_path}")
         if "betterdiscord.asar" not in content:
-            # Insert the require line at the top
             content = f'require("{bd_asar_save_path}");\n' + content
             file.seek(0)
             file.write(content)
@@ -102,11 +94,9 @@ def get_discord_version() -> str:
 
 def is_discord_shipit_process_running() -> bool:
     try:
-        # List all processes with their parent process names
         result = subprocess.run(["ps", "aux"], capture_output=True, text=True)
         processes = result.stdout.splitlines()
 
-        # Filter for processes named ShipIt with Discord as the parent process
         for process in processes:
             if "ShipIt" in process and "Discord" in process:
                 return True
@@ -126,7 +116,6 @@ def get_discord_update_dir() -> str:
             content = file.read()
             plist_dict = json.loads(content)
             update_bundle_url = plist_dict.get("updateBundleURL", "")
-            # Remove the 'file://' prefix if it exists and the "/Discord.app/"
             if update_bundle_url.startswith("file://"):
                 update_bundle_url = update_bundle_url[7:-13]
 
@@ -136,10 +125,8 @@ def get_discord_update_dir() -> str:
     except Exception as e:
         logger.error(f"Error reading Discord updater plist: {e}")
         return
-    pass
 
 
-# Waits 5 minutes for the Discord ShipIt (update) process to finish. Checks every 5 seconds.
 def wait_for_discord_shipit(max_wait_time: int = 300, retry_interval: int = 5) -> bool:
     start_time = time.time()
     retries = 0
@@ -150,13 +137,12 @@ def wait_for_discord_shipit(max_wait_time: int = 300, retry_interval: int = 5) -
         logger.info(f"Retrying in {retry_interval} seconds...")
         time.sleep(retry_interval)
 
-        # Check if we've exceeded the maximum retries or the max wait time
         retries += 1
         elapsed_time = time.time() - start_time
 
         if elapsed_time > max_wait_time or retries >= max_retries:
             logger.error(
-                "Discord ShipIt process did not finish within the expected time. See if Discord is still updating. If so, wait until finished and try again."
+                "Discord ShipIt process did not finish within the expected time."
             )
             return False
 
@@ -164,7 +150,6 @@ def wait_for_discord_shipit(max_wait_time: int = 300, retry_interval: int = 5) -
     return True
 
 
-# Waits 2 minutes for the Discord update process to empty Checks every 5 seconds.
 def wait_for_discord_update_folder(
     update_directory: str, max_wait_time: int = 120, retry_interval: int = 5
 ) -> bool:
@@ -179,13 +164,12 @@ def wait_for_discord_update_folder(
         logger.info(f"Retrying in {retry_interval} seconds...")
         time.sleep(retry_interval)
 
-        # Check if we've exceeded the maximum retries or the max wait time
         retries += 1
         elapsed_time = time.time() - start_time
 
         if elapsed_time > max_wait_time or retries >= max_retries:
             logger.error(
-                "Discord Update process did not finish within the expected time. See if Discord is still updating. If so, wait until finished and try again."
+                "Discord Update process did not finish within the expected time."
             )
             return False
 
@@ -210,7 +194,6 @@ def discord_update_complete(update_directory: str) -> bool:
 
 if __name__ == "__main__":
 
-    # Makes sure it's MacOS
     if platform.system() != "Darwin":
         input(
             "Your system is not supported yet to using this script\n"
@@ -228,21 +211,35 @@ if __name__ == "__main__":
         DISCORD_PARENT_PATH: {DISCORD_PARENT_PATH}
         """
     )
+    notify("BetterDiscord Installer", "Started Listening for Discord updates...")
+    logger.info("Waiting for Discord to start updating...")
 
-    # Now do ^ when discord updates (trying to detect discord updates)
+    while True:
+        if is_discord_shipit_process_running():
+            notify(
+                "BetterDiscord Installer",
+                "Discord update detected! Waiting to start patching process...",
+            )
+            logger.info("Discord update detected! Waiting to start patching process...")
 
-    discord_version_path = get_path_for_current_discord_version(DISCORD_PARENT_PATH)
-    discord_index_js_path = set_discord_index_js_path(discord_version_path)
-    discord_update_dir = get_discord_update_dir()
+            discord_version_path = get_path_for_current_discord_version(
+                DISCORD_PARENT_PATH
+            )
+            discord_index_js_path = set_discord_index_js_path(discord_version_path)
+            discord_update_dir = get_discord_update_dir()
 
-    if discord_update_complete(discord_update_dir):
-        patch_discord_index_js(discord_index_js_path, BD_ASAR_SAVE_PATH)
-        download_betterdiscord_asar(BD_ASAR_URL, BD_ASAR_SAVE_PATH)
-        get_discord_version()
-    else:
-        print("Discord update not complete. Exiting...")
-        sys.exit(1)
+            if discord_update_complete(discord_update_dir):
+                patch_discord_index_js(discord_index_js_path, BD_ASAR_SAVE_PATH)
+                download_betterdiscord_asar(BD_ASAR_URL, BD_ASAR_SAVE_PATH)
+                get_discord_version()
+                notify("BetterDiscord Installer", "Patching and update complete!")
+            else:
+                notify(
+                    "BetterDiscord Installer", "Discord update not complete. Exiting..."
+                )
+                sys.exit(1)
 
-# Need to find a way to run this script all the time. Maybe a cron job?
-# Need to add functionality for a shortcut to manually run the script if you don't want it always running.
-# Need to add tests (no tests currently) -> Need to add missing error handling & edge cases
+            logger.info("Waiting for the next update...")
+        else:
+            logger.info("No update detected. Checking again in 30s...")
+            time.sleep(30)  # Check every 30s
