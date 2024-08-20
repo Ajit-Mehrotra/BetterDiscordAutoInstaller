@@ -34,7 +34,7 @@ def start_discord():
     subprocess.Popen(["open", "-a", "Discord"])
 
 
-def getInstalledDiscordVersion(DISCORD_PARENT_PATH: str) -> str:
+def get_path_for_current_discord_version(DISCORD_PARENT_PATH: str) -> str:
     # On MacOS, the discord version is set as a folder within Library/Application Support/discord --> ex. 0.0.315
 
     # gets all versions of discord installed
@@ -54,7 +54,7 @@ def set_discord_index_js_path(discord_path: str) -> str:
 
 def patch_discord_index_js(discord_index_js_path: str, bd_asar_save_path: str) -> None:
     # Open the index.js file
-    logger.info("Patching Discord index file to use BetterDiscord...")
+    logger.info("Attempting to patch Discord index file to use BetterDiscord...")
     with open(discord_index_js_path, "r+") as file:
         content = file.read()
         logger.info(f"Updating Discord index at: {discord_index_js_path}")
@@ -64,7 +64,7 @@ def patch_discord_index_js(discord_index_js_path: str, bd_asar_save_path: str) -
             file.seek(0)
             file.write(content)
             file.truncate()
-    logger.info("Patching Discord index file.")
+    logger.info("Patched Discord index file.")
 
 
 def download_betterdiscord_asar(asar_url: str, bd_asar_save_path: str) -> None:
@@ -84,7 +84,7 @@ def download_betterdiscord_asar(asar_url: str, bd_asar_save_path: str) -> None:
 
 def get_discord_version() -> str:
     info_plist_path = os.path.join(DISCORD_EXECUTABLE_PATH, "Contents/Info.plist")
-    logger.info(f"Reading Discord Info.plist at: {info_plist_path}")
+    logger.info(f"Attempting to read Discord Info.plist at: {info_plist_path}")
     try:
         with open(info_plist_path, "r") as file:
             content = file.read()
@@ -231,7 +231,7 @@ if __name__ == "__main__":
 
     # Now do ^ when discord updates (trying to detect discord updates)
 
-    discord_version_path = getInstalledDiscordVersion(DISCORD_PARENT_PATH)
+    discord_version_path = get_path_for_current_discord_version(DISCORD_PARENT_PATH)
     discord_index_js_path = set_discord_index_js_path(discord_version_path)
     discord_update_dir = get_discord_update_dir()
 
