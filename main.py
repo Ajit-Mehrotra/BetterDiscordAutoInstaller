@@ -1,12 +1,11 @@
 import os
 import sys
-import time
-import json
 import logging
 import platform
 import subprocess
-import psutil
 import requests
+import json
+import time
 
 
 # setup loggers
@@ -21,7 +20,7 @@ BD_ASAR_URL = "https://github.com/rauenzi/BetterDiscordApp/releases/latest/downl
 HOME_DIR = os.path.expanduser("~")
 BD_PARENT_PATH = os.path.join(HOME_DIR, "Library/Application Support/BetterDiscord")
 DISCORD_PARENT_PATH = os.path.join(HOME_DIR, "Library/Application Support/discord")
-
+DISCORD_EXECUTABLE_PATH = "/Applications/Discord.app"
 
 BD_ASAR_SAVE_PATH = os.path.join(BD_PARENT_PATH, "data/betterdiscord.asar")
 
@@ -73,24 +72,152 @@ def download_betterdiscord_asar(asar_url: str, bd_asar_save_path: str) -> None:
     response = requests.get(asar_url)
 
     logger.info("Updating local BetterDiscord asar file with latest...")
-    with open(bd_asar_save_path, "wb") as file:
-        logger.info(f"Saving to: {bd_asar_save_path}")
-        file.write(response.content)
+    try:
+        with open(bd_asar_save_path, "wb") as file:
+            logger.info(f"Saving to: {bd_asar_save_path}")
+            file.write(response.content)
+    except Exception as e:
+        logger.error(f"Error updating BetterDiscord asar file: {e}")
 
     logger.info("BetterDiscord asar file updated.")
 
 
-# Mac is Darwin
-if platform.system() != "Darwin":
-    input(
-        "Your system is not supported yet to using this script\n"
-        "\n"
-        "Press ENTER to exit."
+def get_discord_version() -> str:
+    info_plist_path = os.path.join(DISCORD_EXECUTABLE_PATH, "Contents/Info.plist")
+    logger.info(f"Reading Discord Info.plist at: {info_plist_path}")
+    try:
+        with open(info_plist_path, "r") as file:
+            content = file.read()
+            version = (
+                content.split("<key>CFBundleShortVersionString</key>")[1]
+                .split("<string>")[1]
+                .split("</string>")[0]
+            )
+            logger.info(f"Discord version: {version}")
+    except Exception as e:
+        logger.error(f"Error reading Discord Info.plist: {e}")
+        return "Unknown version"
+    return version
+
+
+def is_discord_shipit_process_running() -> bool:
+    try:
+        # List all processes with their parent process names
+        result = subprocess.run(["ps", "aux"], capture_output=True, text=True)
+        processes = result.stdout.splitlines()
+
+        # Filter for processes named ShipIt with Discord as the parent process
+        for process in processes:
+            if "ShipIt" in process and "Discord" in process:
+                return True
+        return False
+    except Exception as e:
+        logger.error(f"Error checking ShipIt process: {e}")
+        return False
+
+
+def get_discord_update_dir() -> str:
+    discord_cache_path = os.path.expanduser(
+        "~/Library/Caches/com.hnc.Discord.ShipIt/ShipItState.plist"
     )
-    sys.exit(1)
+    logger.info(f"Reading Discord updater plist at: {discord_cache_path}")
+    try:
+        with open(discord_cache_path, "r") as file:
+            content = file.read()
+            plist_dict = json.loads(content)
+            update_bundle_url = plist_dict.get("updateBundleURL", "")
+            # Remove the 'file://' prefix if it exists and the "/Discord.app/"
+            if update_bundle_url.startswith("file://"):
+                update_bundle_url = update_bundle_url[7:-13]
+
+            logger.info(f"Extracted updateBundleURL: {update_bundle_url}")
+            return update_bundle_url
+
+    except Exception as e:
+        logger.error(f"Error reading Discord updater plist: {e}")
+        return
+    pass
+
+
+# Waits 5 minutes for the Discord ShipIt (update) process to finish. Checks every 5 seconds.
+def wait_for_discord_shipit(max_wait_time: int = 300, retry_interval: int = 5) -> bool:
+    start_time = time.time()
+    retries = 0
+    max_retries = max_wait_time // retry_interval
+
+    while is_discord_shipit_process_running():
+        logger.info("Waiting for Discord ShipIt update process to finish...")
+        logger.info(f"Retrying in {retry_interval} seconds...")
+        time.sleep(retry_interval)
+
+        # Check if we've exceeded the maximum retries or the max wait time
+        retries += 1
+        elapsed_time = time.time() - start_time
+
+        if elapsed_time > max_wait_time or retries >= max_retries:
+            logger.error(
+                "Discord ShipIt process did not finish within the expected time. See if Discord is still updating. If so, wait until finished and try again."
+            )
+            return False
+
+    logger.info("Discord ShipIt process finished successfully.")
+    return True
+
+
+# Waits 2 minutes for the Discord update process to empty Checks every 5 seconds.
+def wait_for_discord_update_folder(
+    update_directory: str, max_wait_time: int = 120, retry_interval: int = 5
+) -> bool:
+    start_time = time.time()
+    retries = 0
+    max_retries = max_wait_time // retry_interval
+
+    while update_directory and os.path.exists(update_directory):
+        logger.info(
+            "Update directory found -> Discord update still in progress. Waiting for update folder to empty..."
+        )
+        logger.info(f"Retrying in {retry_interval} seconds...")
+        time.sleep(retry_interval)
+
+        # Check if we've exceeded the maximum retries or the max wait time
+        retries += 1
+        elapsed_time = time.time() - start_time
+
+        if elapsed_time > max_wait_time or retries >= max_retries:
+            logger.error(
+                "Discord Update process did not finish within the expected time. See if Discord is still updating. If so, wait until finished and try again."
+            )
+            return False
+
+    logger.info("Discord folder update process finished successfully.")
+    return True
+
+
+def discord_update_complete(update_directory: str) -> bool:
+    if not wait_for_discord_shipit():
+        logger.error(
+            "Discord ShipIt still running. Make sure Discord has finished updating before running again."
+        )
+        return False
+
+    if not wait_for_discord_update_folder(update_directory):
+        logger.error(
+            "Discord update folder still exists. Make sure Discord has finished updating before running again."
+        )
+        return False
+    return True
 
 
 if __name__ == "__main__":
+
+    # Makes sure it's MacOS
+    if platform.system() != "Darwin":
+        input(
+            "Your system is not supported yet to using this script\n"
+            "\n"
+            "Press ENTER to exit."
+        )
+        sys.exit(1)
 
     logger.info("BetterDiscordAutoInstaller v1.2.0")
     logger.info(
@@ -102,8 +229,20 @@ if __name__ == "__main__":
         """
     )
 
+    # Now do ^ when discord updates (trying to detect discord updates)
+
     discord_version_path = getInstalledDiscordVersion(DISCORD_PARENT_PATH)
     discord_index_js_path = set_discord_index_js_path(discord_version_path)
+    discord_update_dir = get_discord_update_dir()
 
-    patch_discord_index_js(discord_index_js_path, BD_ASAR_SAVE_PATH)
-    download_betterdiscord_asar(BD_ASAR_URL, BD_ASAR_SAVE_PATH)
+    if discord_update_complete(discord_update_dir):
+        patch_discord_index_js(discord_index_js_path, BD_ASAR_SAVE_PATH)
+        download_betterdiscord_asar(BD_ASAR_URL, BD_ASAR_SAVE_PATH)
+        get_discord_version()
+    else:
+        print("Discord update not complete. Exiting...")
+        sys.exit(1)
+
+# Need to find a way to run this script all the time. Maybe a cron job?
+# Need to add functionality for a shortcut to manually run the script if you don't want it always running.
+# Need to add tests (no tests currently) -> Need to add missing error handling & edge cases
