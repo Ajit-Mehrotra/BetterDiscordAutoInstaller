@@ -92,7 +92,7 @@ python3 macos/manual-installer-mac.py
 You're all set! 
 
 ##### Automatic Installation on Startup
-We'd recommend using the manual installation as it's less-resource intensive. However, if you can't be bothered, this is the script for you!
+We'd recommend using the manual installation as it's less resource-intensive. However, if you can't be bothered, this is the script for you!
 
 This script is more resource-intensive as it will continously wait until it Discord updates. Once Discord starts updating, it waits for it to finish, and then patches in BetterDiscord and waits for another update. 
 
@@ -150,6 +150,15 @@ The auto-installer-mac.py script automates the installation of BetterDiscord whe
 3. **Automatic Patching:** After confirming that the update is complete, the script automatically downloads the latest BetterDiscord .asar file, patches Discord’s index.js file, and replaces existing BetterDiscord.asar file with the latest one.
 
 4. **Continuous Monitoring:** This script runs in the background, continually checking for updates to Discord. It is designed to be run at startup, ensuring BetterDiscord is always reinstalled automatically after any Discord update. 
+
+## Contributing
+
+### Windows
+
+### macOS
+There is redundant/repetitive code which is seen both in manual-installer-mac.py and auto-installer-mac.py. 
+
+That can be fixed. Just need to make sure to have 2 seperate files to allow for auto, manual install, and auto/manual-mixed functionalities. 
 
 
 This project is under the [MIT license](./LICENSE).
